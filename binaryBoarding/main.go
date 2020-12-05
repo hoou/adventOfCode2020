@@ -848,30 +848,17 @@ FFFBBFBRRL`
 
 	replacer := strings.NewReplacer("F", "0", "B", "1", "R", "1", "L", "0")
 	translated := replacer.Replace(input)
-
-	fmt.Println(translated)
-
-	fmt.Println(replacer.Replace("FBFBBFFRLR"))
-
-	fmt.Println()
-
 	passes := strings.Split(translated, "\n")
-
 	sort.Strings(passes)
-
-	fmt.Println(passes)
-
-	min := binToDec(passes[0])
-	fmt.Println(passes[0], min)
-	max := binToDec(passes[len(passes)-1])
-	fmt.Println(passes[len(passes)-1], max)
+	lastPass := passes[len(passes)-1]
+	fmt.Println(lastPass, binToDec(lastPass))
 
 	fmt.Println(findSeat(passes))
 }
 
 func findSeat(passes []string) int64 {
 	firstSeat := binToDec(passes[0])
-	min := binToDec(passes[0])
+	min := firstSeat
 	max := binToDec(passes[len(passes)-1])
 	for {
 		mid := (min + max) / 2
