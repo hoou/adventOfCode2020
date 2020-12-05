@@ -859,8 +859,33 @@ FFFBBFBRRL`
 
 	sort.Strings(passes)
 
-	fmt.Println(passes[0], binToDec(passes[0]))
-	fmt.Println(passes[len(passes)-1], binToDec(passes[len(passes)-1]))
+	fmt.Println(passes)
+
+	min := binToDec(passes[0])
+	fmt.Println(passes[0], min)
+	max := binToDec(passes[len(passes)-1])
+	fmt.Println(passes[len(passes)-1], max)
+
+	fmt.Println(findSeat(passes))
+}
+
+func findSeat(passes []string) int64 {
+	firstSeat := binToDec(passes[0])
+	min := binToDec(passes[0])
+	max := binToDec(passes[len(passes)-1])
+	for {
+		mid := (min + max) / 2
+		index := mid - firstSeat
+		found := binToDec(passes[index])
+		if found == mid {
+			min = mid
+		} else {
+			max = mid
+		}
+		if max-min == 2 {
+			return min + 1
+		}
+	}
 }
 
 func binToDec(bin string) int64 {
