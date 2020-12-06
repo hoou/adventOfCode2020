@@ -2134,7 +2134,7 @@ func makeSet(answers string) map[uint8]bool {
 
 func intersection(s1, s2 map[uint8]bool) map[uint8]bool {
 	result := map[uint8]bool{}
-	for k, _ := range s1 {
+	for k := range s1 {
 		if s2[k] {
 			result[k] = true
 		}
