@@ -606,6 +606,16 @@ shiny purple bags contain 1 shiny teal bag.`
 	rules := strings.Split(input, "\n")
 	rulesMap := prepareMap(rules, false)
 	fmt.Println(atLeastOneShinyGold(rulesMap))
+	invertedRulesMap := prepareMap(rules, true)
+	fmt.Println(countRequired(invertedRulesMap, "shiny gold"))
+}
+
+func countRequired(rulesMap map[string][]Bag, color string) int {
+	result := 0
+	for _, bag := range rulesMap[color] {
+		result += bag.number + bag.number*countRequired(rulesMap, bag.color)
+	}
+	return result
 }
 
 func atLeastOneShinyGold(rulesMap map[string][]Bag) int {
