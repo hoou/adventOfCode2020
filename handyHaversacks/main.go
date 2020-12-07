@@ -603,9 +603,13 @@ vibrant crimson bags contain 5 drab blue bags.
 shiny purple bags contain 1 shiny teal bag.`
 
 	rules := strings.Split(input, "\n")
-	rulesMap := map[string][]string{}
 	rightSideItemsRegex := regexp.MustCompile("^(.*) bags contain (.*)\\.$")
 	rightSideItemRegex := regexp.MustCompile("^\\d+ (.*) bag(s)?$")
+	fmt.Println(atLeastOneShinyGold(rules, rightSideItemsRegex, rightSideItemRegex))
+}
+
+func atLeastOneShinyGold(rules []string, rightSideItemsRegex *regexp.Regexp, rightSideItemRegex *regexp.Regexp) int {
+	rulesMap := map[string][]string{}
 	for _, rule := range rules {
 		result := rightSideItemsRegex.FindStringSubmatch(rule)
 		leftSide := result[1]
@@ -632,5 +636,5 @@ shiny purple bags contain 1 shiny teal bag.`
 			break
 		}
 	}
-	fmt.Println(len(uniqueColorsFound) - 1)
+	return len(uniqueColorsFound) - 1
 }
