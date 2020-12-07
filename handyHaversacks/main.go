@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -607,14 +608,14 @@ shiny purple bags contain 1 shiny teal bag.`
 	fmt.Println(atLeastOneShinyGold(rulesMap))
 }
 
-func atLeastOneShinyGold(rulesMap map[string][]string) int {
+func atLeastOneShinyGold(rulesMap map[string][]Bag) int {
 	uniqueColorsFound := map[string]bool{"shiny gold": true}
 	for {
 		colorsBefore := len(uniqueColorsFound)
 
 		for color := range uniqueColorsFound {
-			for _, potentialNewColor := range rulesMap[color] {
-				uniqueColorsFound[potentialNewColor] = true
+			for _, bag := range rulesMap[color] {
+				uniqueColorsFound[bag.color] = true
 			}
 		}
 
@@ -626,10 +627,15 @@ func atLeastOneShinyGold(rulesMap map[string][]string) int {
 	return len(uniqueColorsFound) - 1
 }
 
-func prepareMap(rules []string, invert bool) map[string][]string {
+type Bag struct {
+	color  string
+	number int
+}
+
+func prepareMap(rules []string, invert bool) map[string][]Bag {
 	rightSideItemsRegex := regexp.MustCompile("^(.*) bags contain (.*)\\.$")
-	rightSideItemRegex := regexp.MustCompile("^\\d+ (.*) bag(s)?$")
-	rulesMap := map[string][]string{}
+	rightSideItemRegex := regexp.MustCompile("^(\\d+) (.*) bag(s)?$")
+	rulesMap := map[string][]Bag{}
 	for _, rule := range rules {
 		result := rightSideItemsRegex.FindStringSubmatch(rule)
 		leftSide := result[1]
@@ -637,10 +643,12 @@ func prepareMap(rules []string, invert bool) map[string][]string {
 		for _, item := range rightSideItems {
 			if item != "no other bags" {
 				itemColor := rightSideItemRegex.FindStringSubmatch(item)
+				newColor := itemColor[2]
 				if invert {
-					rulesMap[leftSide] = append(rulesMap[leftSide], itemColor[1])
+					number, _ := strconv.Atoi(itemColor[1])
+					rulesMap[leftSide] = append(rulesMap[leftSide], Bag{newColor, number})
 				} else {
-					rulesMap[itemColor[1]] = append(rulesMap[itemColor[1]], leftSide)
+					rulesMap[newColor] = append(rulesMap[newColor], Bag{leftSide, 0})
 				}
 			}
 		}
