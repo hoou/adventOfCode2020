@@ -603,24 +603,11 @@ vibrant crimson bags contain 5 drab blue bags.
 shiny purple bags contain 1 shiny teal bag.`
 
 	rules := strings.Split(input, "\n")
-	rightSideItemsRegex := regexp.MustCompile("^(.*) bags contain (.*)\\.$")
-	rightSideItemRegex := regexp.MustCompile("^\\d+ (.*) bag(s)?$")
-	fmt.Println(atLeastOneShinyGold(rules, rightSideItemsRegex, rightSideItemRegex))
+	rulesMap := prepareMap(rules, false)
+	fmt.Println(atLeastOneShinyGold(rulesMap))
 }
 
-func atLeastOneShinyGold(rules []string, rightSideItemsRegex *regexp.Regexp, rightSideItemRegex *regexp.Regexp) int {
-	rulesMap := map[string][]string{}
-	for _, rule := range rules {
-		result := rightSideItemsRegex.FindStringSubmatch(rule)
-		leftSide := result[1]
-		rightSideItems := strings.Split(result[2], ", ")
-		for _, item := range rightSideItems {
-			if item != "no other bags" {
-				itemColor := rightSideItemRegex.FindStringSubmatch(item)
-				rulesMap[itemColor[1]] = append(rulesMap[itemColor[1]], leftSide)
-			}
-		}
-	}
+func atLeastOneShinyGold(rulesMap map[string][]string) int {
 	uniqueColorsFound := map[string]bool{"shiny gold": true}
 	for {
 		colorsBefore := len(uniqueColorsFound)
@@ -637,4 +624,26 @@ func atLeastOneShinyGold(rules []string, rightSideItemsRegex *regexp.Regexp, rig
 		}
 	}
 	return len(uniqueColorsFound) - 1
+}
+
+func prepareMap(rules []string, invert bool) map[string][]string {
+	rightSideItemsRegex := regexp.MustCompile("^(.*) bags contain (.*)\\.$")
+	rightSideItemRegex := regexp.MustCompile("^\\d+ (.*) bag(s)?$")
+	rulesMap := map[string][]string{}
+	for _, rule := range rules {
+		result := rightSideItemsRegex.FindStringSubmatch(rule)
+		leftSide := result[1]
+		rightSideItems := strings.Split(result[2], ", ")
+		for _, item := range rightSideItems {
+			if item != "no other bags" {
+				itemColor := rightSideItemRegex.FindStringSubmatch(item)
+				if invert {
+					rulesMap[leftSide] = append(rulesMap[leftSide], itemColor[1])
+				} else {
+					rulesMap[itemColor[1]] = append(rulesMap[itemColor[1]], leftSide)
+				}
+			}
+		}
+	}
+	return rulesMap
 }
