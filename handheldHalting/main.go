@@ -634,14 +634,59 @@ nop -397
 acc +29
 jmp +1`
 
-	instructions := strings.Split(input, "\n")
+	instructions := createInstructions(input)
 
-	acc, found := breakInfiniteLoop(instructions)
+	acc, _ := breakInfiniteLoop(instructions)
+	fmt.Println(acc)
 
-	fmt.Println(acc, found)
+	for i := 1; ; i++ {
+		modifiedInstructions := replaceInstruction(instructions, i)
+		acc, found := breakInfiniteLoop(modifiedInstructions)
+		if !found {
+			fmt.Println(acc)
+			break
+		}
+	}
 }
 
-func breakInfiniteLoop(instructions []string) (int, bool) {
+func createInstructions(input string) []Instruction {
+	var result []Instruction
+	instructions := strings.Split(input, "\n")
+	for _, instruction := range instructions {
+		parts := strings.Split(instruction, " ")
+		argument, _ := strconv.Atoi(parts[1])
+		result = append(result, Instruction{parts[0], argument})
+	}
+	return result
+}
+
+type Instruction struct {
+	name     string
+	argument int
+}
+
+func replaceInstruction(instructions []Instruction, i int) []Instruction {
+	relativeIndex := 0
+	result := make([]Instruction, len(instructions))
+	copy(result, instructions)
+	for absoluteIndex, instruction := range result {
+		if instruction.name == "nop" || instruction.name == "jmp" {
+			relativeIndex++
+		}
+		if relativeIndex == i {
+			switch result[absoluteIndex].name {
+			case "nop":
+				result[absoluteIndex].name = "jmp"
+			case "jmp":
+				result[absoluteIndex].name = "nop"
+			}
+			break
+		}
+	}
+	return result
+}
+
+func breakInfiniteLoop(instructions []Instruction) (int, bool) {
 	acc := 0
 	index := 0
 	visited := map[int]bool{}
@@ -656,21 +701,20 @@ func breakInfiniteLoop(instructions []string) (int, bool) {
 		}
 		visited[index] = true
 		acc, index = interpretInstruction(acc, index, instructions)
+		if index >= len(instructions) {
+			break
+		}
 	}
 	return acc, found
 }
 
-func interpretInstruction(acc int, index int, instructions []string) (int, int) {
-	parts := strings.Split(instructions[index], " ")
-	instruction := parts[0]
-	argument, _ := strconv.Atoi(parts[1])
-
-	switch instruction {
+func interpretInstruction(acc int, index int, instructions []Instruction) (int, int) {
+	switch instructions[index].name {
 	case "acc":
-		acc += argument
+		acc += instructions[index].argument
 		index += 1
 	case "jmp":
-		index += argument
+		index += instructions[index].argument
 	case "nop":
 		index += 1
 	}
