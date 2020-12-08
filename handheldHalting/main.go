@@ -635,6 +635,13 @@ acc +29
 jmp +1`
 
 	instructions := strings.Split(input, "\n")
+
+	acc := breakInfiniteLoop(instructions)
+
+	fmt.Println(acc)
+}
+
+func breakInfiniteLoop(instructions []string) int {
 	acc := 0
 	index := 0
 	visited := map[int]bool{}
@@ -647,8 +654,7 @@ jmp +1`
 		visited[index] = true
 		acc, index = interpretInstruction(acc, index, instructions)
 	}
-
-	fmt.Println(acc)
+	return acc
 }
 
 func interpretInstruction(acc int, index int, instructions []string) (int, int) {
