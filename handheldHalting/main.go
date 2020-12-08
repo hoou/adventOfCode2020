@@ -636,25 +636,28 @@ jmp +1`
 
 	instructions := strings.Split(input, "\n")
 
-	acc := breakInfiniteLoop(instructions)
+	acc, found := breakInfiniteLoop(instructions)
 
-	fmt.Println(acc)
+	fmt.Println(acc, found)
 }
 
-func breakInfiniteLoop(instructions []string) int {
+func breakInfiniteLoop(instructions []string) (int, bool) {
 	acc := 0
 	index := 0
 	visited := map[int]bool{}
 
+	found := false
+
 	for {
 		_, ok := visited[index]
 		if ok {
+			found = true
 			break
 		}
 		visited[index] = true
 		acc, index = interpretInstruction(acc, index, instructions)
 	}
-	return acc
+	return acc, found
 }
 
 func interpretInstruction(acc int, index int, instructions []string) (int, int) {
