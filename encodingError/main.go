@@ -1018,6 +1018,8 @@ func main() {
 
 	copies := make([]int, 25)
 
+	invalidNumber := -1
+
 	if numbers != nil && len(numbers) > 25 {
 		for i, number := range numbers[25:] {
 			copy(copies, numbers[i:i+25])
@@ -1038,9 +1040,47 @@ func main() {
 				}
 			}
 			if !found {
-				fmt.Println(number)
+				invalidNumber = number
 				break
 			}
 		}
 	}
+
+	fmt.Println(invalidNumber)
+
+	weakness := findWeakness(numbers, invalidNumber)
+	fmt.Println(weakness)
+}
+
+func findWeakness(numbers []int, invalidNumber int) int {
+	length := 2
+	for {
+		for outerIndex, number := range numbers[:len(numbers)-length] {
+			sum := number
+			var puzzle []int
+			for i := 0; i < length-1; i++ {
+				puzzle = append(puzzle, numbers[outerIndex+1+i])
+				sum += numbers[outerIndex+1+i]
+			}
+			if sum == invalidNumber {
+				min, max := minMax(puzzle)
+				return min + max
+			}
+		}
+		length++
+	}
+}
+
+func minMax(array []int) (int, int) {
+	var max = array[0]
+	var min = array[0]
+	for _, value := range array {
+		if max < value {
+			max = value
+		}
+		if min > value {
+			min = value
+		}
+	}
+	return min, max
 }
