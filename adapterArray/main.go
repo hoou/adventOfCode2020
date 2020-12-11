@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	//	input := `16
+	//		input := `16
 	//10
 	//15
 	//5
@@ -19,6 +19,38 @@ func main() {
 	//6
 	//12
 	//4`
+
+	//	input := `28
+	//33
+	//18
+	//42
+	//31
+	//14
+	//46
+	//20
+	//48
+	//47
+	//24
+	//23
+	//49
+	//45
+	//19
+	//38
+	//39
+	//11
+	//1
+	//32
+	//25
+	//35
+	//8
+	//17
+	//7
+	//9
+	//4
+	//2
+	//34
+	//10
+	//3`
 
 	input := `99
 128
@@ -136,15 +168,42 @@ func main() {
 	lastAdapter := 0
 	oneJoltDifferencesSum := 0
 	threeJoltsDifferencesSum := 0
+	distinctWays := 1
+	freshOnes := 0
+	firstInGroup := 0
 	for _, adapter := range adapters {
 		switch adapter - lastAdapter {
 		case 1:
 			oneJoltDifferencesSum++
+			freshOnes++
+
+			if adapter-firstInGroup == 4 {
+				if freshOnes == 2 {
+					distinctWays *= 2
+				} else if freshOnes == 3 {
+					distinctWays *= 4
+				} else if freshOnes == 4 {
+					distinctWays *= 7
+				}
+				freshOnes = 0
+				firstInGroup = adapter
+			}
+
 		case 3:
+			freshOnes--
 			threeJoltsDifferencesSum++
+			firstInGroup = adapter
+			if freshOnes == 1 {
+				distinctWays *= 2
+			} else if freshOnes == 2 {
+				distinctWays *= 4
+			} else if freshOnes == 3 {
+				distinctWays *= 7
+			}
+			freshOnes = 0
 		}
 		lastAdapter = adapter
 	}
 
-	fmt.Println(oneJoltDifferencesSum, threeJoltsDifferencesSum, oneJoltDifferencesSum*threeJoltsDifferencesSum)
+	fmt.Println(oneJoltDifferencesSum, threeJoltsDifferencesSum, oneJoltDifferencesSum*threeJoltsDifferencesSum, distinctWays)
 }
