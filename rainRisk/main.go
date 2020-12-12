@@ -8,13 +8,13 @@ import (
 )
 
 func main() {
-	//	input := `F10
-	//N3
-	//F7
-	//R90
-	//F11`
+	input := `F10
+N3
+F7
+R90
+F11`
 
-	input := `W2
+	input2 := `W2
 F23
 S1
 W3
@@ -803,36 +803,109 @@ S3
 F87`
 
 	instructions := getInstructions(input)
-	v, h := 0, 0
+	instructions2 := getInstructions(input2)
+	manhattanDistance := partI(instructions)
+	manhattanDistance2 := partI(instructions2)
+	fmt.Println(manhattanDistance, manhattanDistance2)
+	manhattanDistance = partII(instructions)
+	manhattanDistance2 = partII(instructions2)
+	fmt.Println(manhattanDistance, manhattanDistance2)
+}
+
+func partI(instructions []Instruction) float64 {
+	coords := Coords{0, 0}
 	var direction uint8 = 'E'
 
 	for _, instruction := range instructions {
 		switch instruction.action {
 		case 'N', 'S', 'E', 'W':
-			v, h = move(v, h, instruction.action, instruction.value)
+			coords = move(coords, instruction.action, instruction.value)
 		case 'L', 'R':
 			direction = getNewDirection(direction, instruction.action, instruction.value)
 		case 'F':
-			v, h = move(v, h, direction, instruction.value)
+			coords = move(coords, direction, instruction.value)
 		}
 	}
-
-	manhattanDistance := math.Abs(float64(v)) + math.Abs(float64(h))
-	fmt.Println(manhattanDistance)
+	manhattanDistance := math.Abs(float64(coords.vertical)) + math.Abs(float64(coords.horizontal))
+	return manhattanDistance
 }
 
-func move(v int, h int, direction uint8, value int) (int, int) {
+func partII(instructions []Instruction) float64 {
+	waypointCoords := Coords{10, 1}
+	shipCoords := Coords{0, 0}
+
+	for _, instruction := range instructions {
+		switch instruction.action {
+		case 'N', 'S', 'E', 'W':
+			waypointCoords = move(waypointCoords, instruction.action, instruction.value)
+		case 'L', 'R':
+			waypointCoords = rotateWaypoint(waypointCoords, instruction.action, instruction.value)
+		case 'F':
+			shipCoords = moveShip(waypointCoords, shipCoords, instruction.value)
+		}
+	}
+	manhattanDistance := math.Abs(float64(shipCoords.vertical)) + math.Abs(float64(shipCoords.horizontal))
+	return manhattanDistance
+}
+
+func rotateWaypoint(coords Coords, action uint8, value int) Coords {
+	sin := int(math.Sin(toRadians(value)))
+	cos := int(math.Cos(toRadians(value)))
+	newH := coords.horizontal
+	newV := coords.vertical
+	switch action {
+	case 'L':
+		newH = coords.horizontal*cos - coords.vertical*sin
+		newV = coords.horizontal*sin + coords.vertical*cos
+	case 'R':
+		newH = coords.horizontal*cos + coords.vertical*sin
+		newV = -coords.horizontal*sin + coords.vertical*cos
+	}
+	coords.horizontal = newH
+	coords.vertical = newV
+
+	return coords
+}
+
+func toRadians(deg int) float64 {
+	return float64(deg) * (math.Pi / 180.0)
+}
+
+func moveShip(waypointCoords Coords, shipCoords Coords, value int) Coords {
+	var direction1, direction2 uint8 = '0', '0'
+	if waypointCoords.horizontal > 0 {
+		direction1 = 'E'
+	} else if waypointCoords.horizontal < 0 {
+		direction1 = 'W'
+	}
+	if waypointCoords.vertical > 0 {
+		direction2 = 'N'
+	} else if waypointCoords.vertical < 0 {
+		direction2 = 'S'
+	}
+
+	if direction1 != '0' {
+		shipCoords = move(shipCoords, direction1, int(math.Abs(float64(waypointCoords.horizontal*value))))
+	}
+	if direction2 != '0' {
+		shipCoords = move(shipCoords, direction2, int(math.Abs(float64(waypointCoords.vertical*value))))
+	}
+
+	return shipCoords
+}
+
+func move(coords Coords, direction uint8, value int) Coords {
 	switch direction {
 	case 'N':
-		v += value
+		coords.vertical += value
 	case 'S':
-		v -= value
+		coords.vertical -= value
 	case 'E':
-		h += value
+		coords.horizontal += value
 	case 'W':
-		h -= value
+		coords.horizontal -= value
 	}
-	return v, h
+	return coords
 }
 
 func getNewDirection(direction, action uint8, value int) uint8 {
@@ -873,4 +946,9 @@ func getInstructions(input string) []Instruction {
 type Instruction struct {
 	action uint8
 	value  int
+}
+
+type Coords struct {
+	horizontal int
+	vertical   int
 }
