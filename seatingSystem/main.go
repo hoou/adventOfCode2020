@@ -110,23 +110,36 @@ LLLLLLLLLL.LLLL.LLLLLLL.LLLLLLLLLLLLLLLL.LLLLLLL.LLLLLL.LLLL.LLLLLLL.LLLLLLLLLLL
 	//LLLLLLLLLL
 	//L.LLLLLL.L
 	//L.LLLLL.LL`
-
+	// part 1
 	rows := strings.Split(input, "\n")
 	copies := strings.Split(input, "\n")
 	numberOfRows := len(rows)
 	numberOfCols := len(rows[0])
 	for {
-		changed := step(rows, numberOfRows, numberOfCols, copies)
+		changed := step(rows, numberOfRows, numberOfCols, 1, 4, copies)
 		if !changed {
 			break
 		}
 	}
 	occupiedSeats := strings.Count(strings.Join(copies, ""), "#")
 	fmt.Println(occupiedSeats)
+
+	// part 2
+	rows = strings.Split(input, "\n")
+	copies = strings.Split(input, "\n")
+	for {
+		changed := step(rows, numberOfRows, numberOfCols, -1, 5, copies)
+		if !changed {
+			break
+		}
+	}
+	occupiedSeats = strings.Count(strings.Join(copies, ""), "#")
+	fmt.Println(occupiedSeats)
 }
 
-func step(rows []string, numberOfRows int, numberOfCols int, copies []string) bool {
+func step(rows []string, numberOfRows, numberOfCols, maxVision, occupiedLimit int, copies []string) bool {
 	changes := 0
+
 	for i, row := range rows {
 		for j, cell := range row {
 			if cell == '.' {
@@ -135,17 +148,13 @@ func step(rows []string, numberOfRows int, numberOfCols int, copies []string) bo
 			occupied := 0
 			for x := -1; x < 2; x++ {
 				for y := -1; y < 2; y++ {
-					rowIndex := i + x
-					colIndex := j + y
-					if rowIndex < 0 || colIndex < 0 || rowIndex >= numberOfRows || colIndex >= numberOfCols || (x == 0 && y == 0) {
-						continue
-					}
-					if rows[rowIndex][colIndex] == '#' {
+					isOccupied := checkDirection(x, y, i, j, numberOfRows, numberOfCols, maxVision, rows)
+					if isOccupied {
 						occupied++
 					}
 				}
 			}
-			if cell == '#' && occupied >= 4 {
+			if cell == '#' && occupied >= occupiedLimit {
 				copies[i] = copies[i][:j] + "L" + copies[i][j+1:]
 				changes++
 			} else if cell == 'L' && occupied == 0 {
@@ -154,6 +163,32 @@ func step(rows []string, numberOfRows int, numberOfCols int, copies []string) bo
 			}
 		}
 	}
+
 	copy(rows, copies)
 	return changes > 0
+}
+
+func checkDirection(x, y, i, j, numberOfRows, numberOfCols, max int, rows []string) bool {
+	x2 := x
+	y2 := y
+	round := 0
+	for {
+		rowIndex := i + x2
+		colIndex := j + y2
+		if rowIndex < 0 || colIndex < 0 || rowIndex >= numberOfRows || colIndex >= numberOfCols || (x2 == 0 && y2 == 0) {
+			return false
+		}
+		if rows[rowIndex][colIndex] == '#' {
+			return true
+		}
+		if rows[rowIndex][colIndex] == 'L' {
+			return false
+		}
+		x2 += x
+		y2 += y
+		round++
+		if max > 0 && round >= max {
+			return false
+		}
+	}
 }
