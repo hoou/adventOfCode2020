@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"math"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -607,16 +609,21 @@ mem[43716] = 411505145
 mem[3338] = 661
 mem[2430] = 2635`
 
-	fmt.Println(sumMemory(testInput))
-	fmt.Println(sumMemory(input))
+	testInputPartII := `mask = 000000000000000000000000000000X1001X
+mem[42] = 100
+mask = 00000000000000000000000000000000X0XX
+mem[26] = 1`
+
+	fmt.Println(interpretPartI(getInstructions(testInput)))
+	fmt.Println(interpretPartI(getInstructions(input)))
+	fmt.Println(interpretPartII(getInstructions(testInputPartII)))
+	fmt.Println(interpretPartII(getInstructions(input)))
 }
 
-func sumMemory(testInput string) int {
+func interpretPartI(instructions []Instruction) int {
 	mask := "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-
 	memory := make(map[int]int)
 
-	instructions := getInstructions(testInput)
 	for _, instruction := range instructions {
 		switch instruction.name {
 		case "mask":
@@ -627,12 +634,81 @@ func sumMemory(testInput string) int {
 		}
 	}
 
+	return sumMemory(memory)
+}
+
+func sumMemory(memory map[int]int) int {
 	sum := 0
 	for _, v := range memory {
 		sum += v
 	}
-
 	return sum
+}
+
+func interpretPartII(instructions []Instruction) int {
+	mask := "000000000000000000000000000000000000"
+	memory := make(map[int]int)
+
+	for _, instruction := range instructions {
+		switch instruction.name {
+		case "mask":
+			mask = instruction.arg1.(string)
+		case "mem":
+			rawAddress := instruction.arg2.(int)
+			addresses := getMaskedAddresses(rawAddress, mask)
+			for _, address := range addresses {
+				memory[address] = instruction.arg1.(int)
+			}
+		}
+	}
+
+	return sumMemory(memory)
+}
+
+func getMaskedAddresses(address int, mask string) []int {
+	maskWithoutX := strings.ReplaceAll(mask, "X", "0")
+	maskWithoutXBinaryString, _ := strconv.ParseInt(maskWithoutX, 2, 64)
+
+	partialResult := prefixBinaryString(strconv.FormatInt(int64(address)|maskWithoutXBinaryString, 2), len(mask))
+
+	var addresses []int
+
+	mask = reverse(mask)
+	indices := findAllIndices(mask, "X")
+	for i := 0; i < int(math.Pow(2.0, float64(len(indices)))); i++ {
+		binaryString := strconv.FormatInt(int64(i), 2)
+		prefixedBinaryString := reverse(prefixBinaryString(binaryString, len(indices)))
+		newBinary := reverse(partialResult)
+		for j, index := range indices {
+			if index == len(newBinary)-1 {
+				newBinary = newBinary[:index] + string(prefixedBinaryString[j])
+			} else {
+				newBinary = newBinary[:index] + string(prefixedBinaryString[j]) + newBinary[index+1:]
+			}
+		}
+		newAddress, _ := strconv.ParseInt(reverse(newBinary), 2, 64)
+		addresses = append(addresses, int(newAddress))
+	}
+
+	return addresses
+}
+
+func prefixBinaryString(binaryString string, length int) string {
+	missing := length - len(binaryString)
+	for i := 0; i < missing; i++ {
+		binaryString = "0" + binaryString[:]
+	}
+	return binaryString
+}
+
+func findAllIndices(text string, needle string) []int {
+	regex := regexp.MustCompile(needle)
+	indicesRaw := regex.FindAllIndex([]byte(text), -1)
+	var indices []int
+	for _, indexRaw := range indicesRaw {
+		indices = append(indices, indexRaw[0])
+	}
+	return indices
 }
 
 func getMaskedValue(value int, mask string) int {
