@@ -284,25 +284,105 @@ nearby tickets:
 
 	fields, _, nearbyTickets := parseInput(testInput)
 	validValues := buildValidValuesMap(fields)
-	errorRate := getTicketScanningErrorRate(nearbyTickets, validValues)
+	validTickets, errorRate := removeInvalidTickets(nearbyTickets, validValues)
 	fmt.Println(errorRate)
+	fmt.Println(validTickets)
+	fieldsOrdered := getFieldsOrdered(validTickets, fields)
+	fmt.Println(fieldsOrdered)
 
-	fields, _, nearbyTickets = parseInput(input)
+	fields, yourTicket, nearbyTickets := parseInput(input)
 	validValues = buildValidValuesMap(fields)
-	errorRate = getTicketScanningErrorRate(nearbyTickets, validValues)
+	validTickets, errorRate = removeInvalidTickets(nearbyTickets, validValues)
 	fmt.Println(errorRate)
+	fmt.Println(validTickets)
+	fieldsOrdered = getFieldsOrdered(validTickets, fields)
+	fmt.Println(fieldsOrdered)
+
+	departuresMultiplied := multiplyDepartures(yourTicket, fieldsOrdered)
+	fmt.Println(departuresMultiplied)
 }
 
-func getTicketScanningErrorRate(tickets [][]int, validValues map[int]bool) int {
-	errorRate := 0
-	for _, ticket := range tickets {
-		for _, number := range ticket {
-			if _, e := validValues[number]; !e {
-				errorRate += number
+func multiplyDepartures(ticket []int, fieldsOrdered []string) int {
+	result := 1
+	for index, field := range fieldsOrdered {
+		if len(field) >= 9 && field[:9] == "departure" {
+			result *= ticket[index]
+		}
+	}
+	return result
+}
+
+func getFieldsOrdered(tickets [][]int, fields []Field) []string {
+	var fieldsCandidates []map[string]bool
+	fieldNames := make(map[string]bool)
+	for _, field := range fields {
+		fieldNames[field.name] = true
+	}
+	for range fields {
+		fieldsCandidates = append(fieldsCandidates, copyMap(fieldNames))
+	}
+
+	if fieldsCandidates != nil {
+		for _, ticket := range tickets {
+			for numberIndex, number := range ticket {
+				for _, field := range fields {
+					if !isValidValue(number, field) {
+						delete(fieldsCandidates[numberIndex], field.name)
+					}
+				}
 			}
 		}
 	}
-	return errorRate
+
+	finalMap := make(map[string]int)
+
+	for {
+		for index, candidates := range fieldsCandidates {
+			if len(candidates) == 1 {
+				for candidate := range candidates {
+					finalMap[candidate] = index
+				}
+			} else if len(candidates) > 1 {
+				for candidate := range candidates {
+					if _, found := finalMap[candidate]; found {
+						delete(candidates, candidate)
+					}
+				}
+			}
+		}
+		if len(finalMap) == len(fieldNames) {
+			break
+		}
+	}
+
+	final := make([]string, len(fieldNames), len(fieldNames))
+	for fieldName, fieldIndex := range finalMap {
+		final[fieldIndex] = fieldName
+	}
+
+	return final
+}
+
+func isValidValue(number int, field Field) bool {
+	return (number >= field.min1 && number <= field.max1) || (number >= field.min2 && number <= field.max2)
+}
+
+func removeInvalidTickets(tickets [][]int, validValues map[int]bool) ([][]int, int) {
+	var validTickets [][]int
+	errorRate := 0
+	for _, ticket := range tickets {
+		isValid := true
+		for _, number := range ticket {
+			if _, e := validValues[number]; !e {
+				errorRate += number
+				isValid = false
+			}
+		}
+		if isValid {
+			validTickets = append(validTickets, ticket)
+		}
+	}
+	return validTickets, errorRate
 }
 
 func buildValidValuesMap(fields []Field) map[int]bool {
@@ -328,7 +408,7 @@ type Field struct {
 
 func parseInput(input string) ([]Field, []int, [][]int) {
 	var fields []Field
-	fieldsRegex := regexp.MustCompile(`(\w+): (\d+)-(\d+) or (\d+)-(\d+)\n`)
+	fieldsRegex := regexp.MustCompile(`([^:]+): (\d+)-(\d+) or (\d+)-(\d+)\n`)
 	for _, match := range fieldsRegex.FindAllStringSubmatch(input, -1) {
 		min1, _ := strconv.Atoi(match[2])
 		max1, _ := strconv.Atoi(match[3])
@@ -353,4 +433,12 @@ func parseInput(input string) ([]Field, []int, [][]int) {
 		nearbyTickets = append(nearbyTickets, nearbyTicket)
 	}
 	return fields, yourTicket, nearbyTickets
+}
+
+func copyMap(m map[string]bool) map[string]bool {
+	cp := make(map[string]bool)
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
 }
