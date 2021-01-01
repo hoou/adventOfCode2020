@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -59,18 +60,42 @@ qvzl lkv bcrp znhd qkdmtk lvrrr vhl bbsqm fvjqkh zkls ccc xfp shlzrzq pzqbcnq ff
 
 	meals, allergens := parseInput(input)
 	matchAllergens(meals, allergens)
-	fmt.Println(meals)
 
 	result := countIngredientsWithoutAllergensOccurences(meals)
 	fmt.Println(result)
+
+	list := generateCanonicalDangerousIngredientList(meals)
+	fmt.Println(list)
+}
+
+func generateCanonicalDangerousIngredientList(meals []*Meal) string {
+	ingredientsMap := make(map[*Ingredient]bool)
+	for _, meal := range meals {
+		for ingredient := range meal.ingredients {
+			if ingredient.allergen != nil {
+				ingredientsMap[ingredient] = true
+			}
+		}
+	}
+	var ingredients []*Ingredient
+	for ingredient := range ingredientsMap {
+		ingredients = append(ingredients, ingredient)
+	}
+	sort.Slice(ingredients, func(i, j int) bool {
+		return ingredients[i].allergen.name < ingredients[j].allergen.name
+	})
+	var ingredientNames []string
+	for _, ingredient := range ingredients {
+		ingredientNames = append(ingredientNames, ingredient.name)
+	}
+	return strings.Join(ingredientNames, ",")
 }
 
 func countIngredientsWithoutAllergensOccurences(meals []*Meal) int {
 	sum := 0
 	for _, meal := range meals {
-		for _, ingredient := range meal.ingredients {
+		for ingredient := range meal.ingredients {
 			if ingredient.allergen == nil {
-				//fmt.Println(meal, "\t", ingredient.name)
 				sum++
 			}
 		}
@@ -79,14 +104,16 @@ func countIngredientsWithoutAllergensOccurences(meals []*Meal) int {
 }
 
 func matchAllergens(meals []*Meal, allergens []*Allergen) {
+	mealsDuplicities := duplicateMeals(meals)
 	tryAgain := true
 	for {
 		tryAgain = false
 		for _, allergen := range allergens {
-			filteredMeals := filterMeals(meals, allergen)
-			found := matchAllergenBasedOnIntersection(allergen, filteredMeals)
-			if found {
+			filteredMeals := filterMeals(mealsDuplicities, allergen)
+			ingredient := matchAllergen(allergen, filteredMeals)
+			if ingredient != nil {
 				tryAgain = true
+				removeIngredientAndAllergen(mealsDuplicities, ingredient, allergen)
 			}
 
 		}
@@ -96,15 +123,39 @@ func matchAllergens(meals []*Meal, allergens []*Allergen) {
 	}
 }
 
-func matchAllergenBasedOnIntersection(allergen *Allergen, meals []*Meal) bool {
-	ingredientsCounter := make(map[*Ingredient]int)
+func removeIngredientAndAllergen(meals []*Meal, ingredient *Ingredient, allergen *Allergen) {
+	for _, meal := range meals {
+		delete(meal.ingredients, ingredient)
+		delete(meal.allergens, allergen)
+	}
+}
 
-	result := false
+func duplicateMeals(meals []*Meal) []*Meal {
+	var result []*Meal
+	for _, meal := range meals {
+		allergens := make(map[*Allergen]bool)
+		ingredients := make(map[*Ingredient]bool)
+		for allergen := range meal.allergens {
+			allergens[allergen] = true
+		}
+		for ingredient := range meal.ingredients {
+			ingredients[ingredient] = true
+		}
+		result = append(result, &Meal{ingredients, allergens})
+	}
+	return result
+}
+
+func matchAllergen(allergen *Allergen, meals []*Meal) *Ingredient {
+	var result *Ingredient
+
+	//fmt.Println("trying to match " + allergen.name)
+	ingredientsCounter := make(map[*Ingredient]int)
 
 	for _, meal := range meals {
 		var ingredientsWithoutAllergen []*Ingredient
 		allergenAlreadyMatched := false
-		for _, ingredient := range meal.ingredients {
+		for ingredient := range meal.ingredients {
 			if ingredient.allergen == nil {
 				ingredientsCounter[ingredient]++
 				ingredientsWithoutAllergen = append(ingredientsWithoutAllergen, ingredient)
@@ -113,23 +164,25 @@ func matchAllergenBasedOnIntersection(allergen *Allergen, meals []*Meal) bool {
 			}
 		}
 		if !allergenAlreadyMatched && len(ingredientsWithoutAllergen) == 1 && len(meal.allergens) == 1 {
+			fmt.Println("matched by left: " + allergen.name)
 			ingredientsWithoutAllergen[0].allergen = allergen
-			result = true
+			result = ingredientsWithoutAllergen[0]
 		}
 	}
 
-	var matchedIngredient *Ingredient
+	var matchedIngredients []*Ingredient
 
 	for ingredient, count := range ingredientsCounter {
 		if (count == len(meals) && count != 1) || (count == len(meals) && count == 1 && len(meals[0].ingredients) == 1) {
-			matchedIngredient = ingredient
+			matchedIngredients = append(matchedIngredients, ingredient)
 			break
 		}
 	}
 
-	if matchedIngredient != nil {
-		matchedIngredient.allergen = allergen
-		result = true
+	if len(matchedIngredients) == 1 {
+		matchedIngredients[0].allergen = allergen
+		fmt.Println("matched by intersection: " + allergen.name)
+		result = matchedIngredients[0]
 	}
 	return result
 }
@@ -138,7 +191,7 @@ func filterMeals(meals []*Meal, allergenFilter *Allergen) []*Meal {
 	var result []*Meal
 	for _, meal := range meals {
 		allergenFound := false
-		for _, allergen := range meal.allergens {
+		for allergen := range meal.allergens {
 			if allergen == allergenFilter {
 				allergenFound = true
 				break
@@ -158,8 +211,8 @@ func parseInput(input string) ([]*Meal, []*Allergen) {
 	mealRe := regexp.MustCompile(`((\w+ )+)\(contains (\w+(?:, \w+)*)\)`)
 	for _, mealRaw := range strings.Split(input, "\n") {
 		mealRawParts := mealRe.FindStringSubmatch(mealRaw)
-		var ingredients []*Ingredient
-		var allergens []*Allergen
+		ingredients := make(map[*Ingredient]bool)
+		allergens := make(map[*Allergen]bool)
 		for _, ingredient := range strings.Split(mealRawParts[1], " ") {
 			if ingredient != "" {
 				ingredientPtr, ingredientExists := ingredientsMap[ingredient]
@@ -167,7 +220,7 @@ func parseInput(input string) ([]*Meal, []*Allergen) {
 					ingredientPtr = &Ingredient{ingredient, nil}
 					ingredientsMap[ingredient] = ingredientPtr
 				}
-				ingredients = append(ingredients, ingredientPtr)
+				ingredients[ingredientPtr] = true
 			}
 		}
 		for _, allergen := range strings.Split(mealRawParts[3], ", ") {
@@ -176,7 +229,7 @@ func parseInput(input string) ([]*Meal, []*Allergen) {
 				allergenPtr = &Allergen{allergen}
 				allergensMap[allergen] = allergenPtr
 			}
-			allergens = append(allergens, allergenPtr)
+			allergens[allergenPtr] = true
 		}
 		meals = append(meals, &Meal{ingredients, allergens})
 	}
@@ -211,8 +264,8 @@ func (i *Ingredient) String() string {
 }
 
 type Meal struct {
-	ingredients []*Ingredient
-	allergens   []*Allergen
+	ingredients map[*Ingredient]bool
+	allergens   map[*Allergen]bool
 }
 
 func (m *Meal) String() string {
