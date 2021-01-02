@@ -62,42 +62,103 @@ Player 2:
 31`
 
 	players := parseInput(input)
-	game := Game{playerOne: players[0], playerTwo: players[1]}
+	game := NewGame(players[0], players[1], true)
 	game.play()
-	fmt.Println(fmt.Sprintf("Winner is player number %d with score %d after %d rounds.", game.winner.number, game.winner.getScore(), game.round))
 }
 
 type Game struct {
+	id        int
 	playerOne *Player
 	playerTwo *Player
 	winner    *Player
 	round     int
+	recursive bool
+	history   map[string]bool
+}
+
+var numberOfGames = 0
+var debug = false
+
+func NewGame(playerOne *Player, playerTwo *Player, recursive bool) *Game {
+	numberOfGames++
+	game := &Game{id: numberOfGames, playerOne: playerOne, playerTwo: playerTwo, recursive: recursive}
+	game.history = make(map[string]bool)
+	return game
 }
 
 func (g *Game) play() {
+	g.printStart()
+
 	for {
 		g.round++
 		g.printStatus()
+
+		if g.recursive && g.isHistoryRepeating() {
+			if debug {
+				fmt.Println("History is repeating.")
+			}
+			g.winner = g.playerOne
+			break
+		}
+
+		g.saveHistory()
+
 		cardOne, _ := g.playerOne.popCard()
 		cardTwo, _ := g.playerTwo.popCard()
 
-		if cardOne > cardTwo {
-			g.playerOne.addToBottom(cardOne, cardTwo)
-		} else {
-			g.playerTwo.addToBottom(cardTwo, cardOne)
-		}
+		g.checkRoundWinner(cardOne, cardTwo)
 
 		isWinner := g.checkWinner()
 		if isWinner {
 			break
 		}
 	}
+
+	g.printEnd()
+
+	if g.id == 1 {
+		fmt.Println(fmt.Sprintf("Winner is player number %d with score %d after %d rounds.", g.winner.number, g.winner.getScore(), g.round))
+	}
+}
+
+func (g *Game) checkRoundWinner(cardOne int, cardTwo int) {
+	var winner *Player
+	if g.recursive && g.shouldDecideSubGame(cardOne, cardTwo) {
+		if debug {
+			fmt.Println("Playing a sub-game to determine the winner...")
+			fmt.Println()
+		}
+		subGame := g.createSubGame(cardOne, cardTwo)
+		subGame.play()
+		if subGame.winner.number == subGame.playerOne.number {
+			winner = g.playerOne
+		} else {
+			winner = g.playerTwo
+		}
+	} else {
+		if cardOne > cardTwo {
+			winner = g.playerOne
+		} else {
+			winner = g.playerTwo
+		}
+	}
+
+	if winner == g.playerOne {
+		g.playerOne.addToBottom(cardOne, cardTwo)
+	} else {
+		g.playerTwo.addToBottom(cardTwo, cardOne)
+	}
+	if debug {
+		fmt.Printf("Player %d wins round %d of game %d!\n\n", winner.number, g.round, g.id)
+	}
 }
 
 func (g *Game) printStatus() {
-	fmt.Printf("-- Round %d --\n", g.round)
-	fmt.Printf("Player %d's deck: %v\n", g.playerOne.number, g.playerOne.cards)
-	fmt.Printf("Player %d's deck: %v\n", g.playerTwo.number, g.playerTwo.cards)
+	if debug {
+		fmt.Printf("-- Round %d (Game %d) --\n", g.round, g.id)
+		fmt.Printf("Player %d's deck: %v\n", g.playerOne.number, g.playerOne.cards)
+		fmt.Printf("Player %d's deck: %v\n", g.playerTwo.number, g.playerTwo.cards)
+	}
 }
 
 func (g *Game) checkWinner() bool {
@@ -112,6 +173,53 @@ func (g *Game) checkWinner() bool {
 	return false
 }
 
+func (g *Game) isHistoryRepeating() bool {
+	hash := g.playerOne.getCardsHash() + ":" + g.playerTwo.getCardsHash()
+	return g.history[hash]
+}
+
+func (g *Game) saveHistory() {
+	hash := g.playerOne.getCardsHash() + ":" + g.playerTwo.getCardsHash()
+	g.history[hash] = true
+}
+
+func (g *Game) shouldDecideSubGame(cardOne, cardTwo int) bool {
+	return len(g.playerOne.cards) >= cardOne && len(g.playerTwo.cards) >= cardTwo
+}
+
+func (g *Game) createSubGame(cardOne, cardTwo int) *Game {
+	game := NewGame(&Player{
+		number: g.playerOne.number,
+		cards:  nil,
+	}, &Player{
+		number: g.playerTwo.number,
+		cards:  nil,
+	}, g.recursive)
+	for i := 0; i < cardOne; i++ {
+		game.playerOne.cards = append(game.playerOne.cards, g.playerOne.cards[i])
+	}
+	for i := 0; i < cardTwo; i++ {
+		game.playerTwo.cards = append(game.playerTwo.cards, g.playerTwo.cards[i])
+	}
+
+	return game
+}
+
+func (g *Game) printStart() {
+	if debug {
+		fmt.Printf("=== Game %d ===\n\n", g.id)
+	}
+}
+
+func (g *Game) printEnd() {
+	if debug || g.id == 1 {
+		fmt.Println()
+		fmt.Println("== Post-game results ==")
+		fmt.Printf("Player %d's deck: %v\n", g.playerOne.number, g.playerOne.cards)
+		fmt.Printf("Player %d's deck: %v\n", g.playerTwo.number, g.playerTwo.cards)
+	}
+}
+
 type Player struct {
 	number int
 	cards  []int
@@ -122,6 +230,9 @@ func (p *Player) popCard() (int, bool) {
 		return 0, false
 	}
 	defer func() { p.cards = p.cards[1:] }()
+	if debug {
+		fmt.Printf("Player %d plays: %d\n", p.number, p.cards[0])
+	}
 	return p.cards[0], true
 }
 
@@ -140,6 +251,14 @@ func (p *Player) getScore() int {
 		score += i * p.cards[len(p.cards)-i]
 	}
 	return score
+}
+
+func (p *Player) getCardsHash() string {
+	var cards []string
+	for _, card := range p.cards {
+		cards = append(cards, strconv.Itoa(card))
+	}
+	return strings.Join(cards, ",")
 }
 
 func parseInput(input string) []*Player {
